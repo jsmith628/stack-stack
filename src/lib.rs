@@ -4,6 +4,7 @@ use core::mem::*;
 use core::ops::*;
 use core::ptr::copy_nonoverlapping;
 use core::slice::*;
+use core::borrow::*;
 
 pub struct StackVec<T, const N:usize> {
     len: usize,
@@ -27,6 +28,43 @@ impl<T, const N:usize> DerefMut for StackVec<T,N> {
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe { from_raw_parts_mut(self.data.as_mut_ptr() as *mut _, self.len) }
     }
+}
+
+impl<T, I:SliceIndex<[T]>, const N:usize> Index<I> for StackVec<T,N> {
+    type Output = I::Output;
+    fn index(&self, i:I) -> &Self::Output {
+        &self.as_slice()[i]
+    }
+}
+
+impl<T, I:SliceIndex<[T]>, const N:usize> IndexMut<I> for StackVec<T,N> {
+    fn index_mut(&mut self, i:I) -> &mut Self::Output {
+        &mut self.as_mut_slice()[i]
+    }
+}
+
+impl<T, const N:usize> Default for StackVec<T,N> {
+    fn default() -> Self { Self::new() }
+}
+
+impl<T, const N:usize> From<[T;N]> for StackVec<T,N> {
+    fn from(array: [T;N]) -> Self { Self::from_array(array) }
+}
+
+impl<T, const N:usize> AsRef<[T]> for StackVec<T,N> {
+    fn as_ref(&self) -> &[T] { self.as_slice() }
+}
+
+impl<T, const N:usize> AsMut<[T]> for StackVec<T,N> {
+    fn as_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
+}
+
+impl<T, const N:usize> Borrow<[T]> for StackVec<T,N> {
+    fn borrow(&self) -> &[T] { self.as_slice() }
+}
+
+impl<T, const N:usize> BorrowMut<[T]> for StackVec<T,N> {
+    fn borrow_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
 }
 
 impl<T> StackVec<T, 0> {
