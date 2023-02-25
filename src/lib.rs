@@ -97,8 +97,12 @@ impl<T, const N:usize> StackVec<T, N> {
     // pub fn into_boxed_slice() 
 
     pub fn truncate(&mut self, len: usize) {
-        let target = self.len().saturating_sub(len);
-        while self.len() > target { self.pop(); }
+        let target = self.len().min(len);
+        if needs_drop::<T>() {
+            while self.len() > target { self.pop(); }
+        } else {
+            unsafe { self.set_len(target) }
+        }
     }
 
     pub unsafe fn set_len(&mut self, len: usize) {
@@ -108,7 +112,13 @@ impl<T, const N:usize> StackVec<T, N> {
     fn check_bounds(&self, index: usize, op:&str) {
         //TODO: fill in error message
         if index >= self.len() {
-            panic!("Attemted to {op} item at {index}, but the len was {}", self.len());
+            panic!("Attempted to {op} item at {index}, but the len was {}", self.len());
+        }
+    }
+
+    fn check_capacity(&self, size: usize, op:&str) {
+        if size > self.capacity() {
+            panic!("Attempted to {op} to {size}, but the capacity is {}", self.capacity())
         }
     }
 
@@ -165,6 +175,40 @@ impl<T, const N:usize> StackVec<T, N> {
             }
         }
         self.len = 0;
+    }
+
+    pub fn resize(&mut self, new_len:usize, x:T) where T:Clone {
+        self.resize_with(new_len, || x.clone())
+    }
+
+    pub fn resize_with<F:FnMut()->T>(&mut self, new_len:usize, mut f:F) {
+        self.check_capacity(new_len, "resize");
+        if new_len < self.len() {
+            self.truncate(new_len);
+        } else {
+            while self.len() < new_len {
+                self.push(f());
+            }
+        }
+    }
+
+    pub fn extend_from_slice<'a>(&mut self, mut other:&'a[T]) -> &'a[T] where T:Clone {
+        while other.len() > 0 && !self.is_full() {
+            self.push(other[0].clone());
+            other = &other[1..];
+        }
+        other
+    }
+
+    pub fn extend_from_iter<I:Iterator<Item=T>>(&mut self, mut iter:I) -> I {
+        while !self.is_full() {
+            if let Some(x) = iter.next() {
+                self.push(x);
+            } else {
+                break;
+            }
+        }
+        iter
     }
 
 }
