@@ -9,6 +9,16 @@ pub struct StackVec<T, const N:usize> {
     data: [MaybeUninit<T>; N]
 }
 
+impl<T, const N:usize> Drop for StackVec<T, N> {
+    fn drop(&mut self) {
+        for i in 0..self.len {
+            unsafe {
+                self.data[i].assume_init_drop();
+            }
+        }
+    }
+}
+
 impl<T, const N:usize> Deref for StackVec<T,N> {
     type Target = [T];
     fn deref(&self) -> &[T] {
@@ -23,7 +33,7 @@ impl<T, const N:usize> DerefMut for StackVec<T,N> {
 }
 
 impl<T> StackVec<T, 0> {
-    pub fn with_capacity<const M:usize>() -> StackVec<T,M> {
+    pub fn with_capacity<const N:usize>() -> StackVec<T,N> {
         StackVec::new()
     }
 }
