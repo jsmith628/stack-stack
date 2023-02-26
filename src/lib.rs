@@ -2,14 +2,24 @@
 
 use core::mem::*;
 use core::ops::*;
-use core::ptr::copy_nonoverlapping;
 use core::slice::*;
 use core::borrow::*;
 use core::hash::*;
+use core::ptr::copy_nonoverlapping;
 
 pub struct StackVec<T, const N:usize> {
     len: usize,
     data: [MaybeUninit<T>; N]
+}
+
+impl<T:Clone, const N:usize> Clone for StackVec<T, N> {
+    fn clone(&self) -> Self {
+        let mut new = StackVec::new();
+        while new.len() < self.len() {
+            new.push(self[new.len()].clone());
+        }
+        new
+    }
 }
 
 impl<T, const N:usize> Drop for StackVec<T, N> {
