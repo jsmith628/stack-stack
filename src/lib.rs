@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![no_std]
 
 use core::iter::*;
@@ -8,14 +9,14 @@ use core::borrow::*;
 use core::hash::*;
 use core::ptr::copy_nonoverlapping;
 
-pub struct StackVec<T, const N:usize> {
+pub struct Stack<T, const N:usize> {
     len: usize,
     data: [MaybeUninit<T>; N]
 }
 
-impl<T:Clone, const N:usize> Clone for StackVec<T, N> {
+impl<T:Clone, const N:usize> Clone for Stack<T, N> {
     fn clone(&self) -> Self {
-        let mut new = StackVec::new();
+        let mut new = Stack::new();
         while new.len() < self.len() {
             new.push(self[new.len()].clone());
         }
@@ -23,122 +24,122 @@ impl<T:Clone, const N:usize> Clone for StackVec<T, N> {
     }
 }
 
-impl<T, const N:usize> Drop for StackVec<T, N> {
+impl<T, const N:usize> Drop for Stack<T, N> {
     fn drop(&mut self) {
         self.clear();
     }
 }
 
-impl<T, const N:usize> Deref for StackVec<T,N> {
+impl<T, const N:usize> Deref for Stack<T,N> {
     type Target = [T];
     fn deref(&self) -> &[T] {
         unsafe { from_raw_parts(self.data.as_ptr() as *const _, self.len) }
     }
 }
 
-impl<T, const N:usize> DerefMut for StackVec<T,N> {
+impl<T, const N:usize> DerefMut for Stack<T,N> {
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe { from_raw_parts_mut(self.data.as_mut_ptr() as *mut _, self.len) }
     }
 }
 
-impl<T, const N:usize> Default for StackVec<T,N> {
+impl<T, const N:usize> Default for Stack<T,N> {
     fn default() -> Self { Self::new() }
 }
 
-impl<T, const N:usize> From<[T;N]> for StackVec<T,N> {
+impl<T, const N:usize> From<[T;N]> for Stack<T,N> {
     fn from(array: [T;N]) -> Self { Self::from_array(array) }
 }
 
-impl<T, const N:usize> AsRef<[T]> for StackVec<T,N> {
+impl<T, const N:usize> AsRef<[T]> for Stack<T,N> {
     fn as_ref(&self) -> &[T] { self.as_slice() }
 }
 
-impl<T, const N:usize> AsMut<[T]> for StackVec<T,N> {
+impl<T, const N:usize> AsMut<[T]> for Stack<T,N> {
     fn as_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
 }
 
-impl<T, const N:usize> Borrow<[T]> for StackVec<T,N> {
+impl<T, const N:usize> Borrow<[T]> for Stack<T,N> {
     fn borrow(&self) -> &[T] { self.as_slice() }
 }
 
-impl<T, const N:usize> BorrowMut<[T]> for StackVec<T,N> {
+impl<T, const N:usize> BorrowMut<[T]> for Stack<T,N> {
     fn borrow_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
 }
 
-impl<T> StackVec<T, 0> {
-    pub fn with_capacity<const N:usize>() -> StackVec<T,N> {
-        StackVec::new()
+impl<T> Stack<T, 0> {
+    pub fn with_capacity<const N:usize>() -> Stack<T,N> {
+        Stack::new()
     }
 }
 
-impl<T, I:SliceIndex<[T]>, const N:usize> Index<I> for StackVec<T,N> {
+impl<T, I:SliceIndex<[T]>, const N:usize> Index<I> for Stack<T,N> {
     type Output = I::Output;
     fn index(&self, i:I) -> &Self::Output {
         &self.as_slice()[i]
     }
 }
 
-impl<T, I:SliceIndex<[T]>, const N:usize> IndexMut<I> for StackVec<T,N> {
+impl<T, I:SliceIndex<[T]>, const N:usize> IndexMut<I> for Stack<T,N> {
     fn index_mut(&mut self, i:I) -> &mut Self::Output {
         &mut self.as_mut_slice()[i]
     }
 }
 
-impl<T:Eq, const N:usize> Eq for StackVec<T,N> {}
+impl<T:Eq, const N:usize> Eq for Stack<T,N> {}
 
-impl<T:PartialEq<U>, U, const N:usize, const M:usize> PartialEq<StackVec<U,M>> for StackVec<T,N> {
-    fn eq(&self, other: &StackVec<U,M>) -> bool { self.as_slice().eq(other.as_slice()) }
-    fn ne(&self, other: &StackVec<U,M>) -> bool { self.as_slice().ne(other.as_slice()) }
+impl<T:PartialEq<U>, U, const N:usize, const M:usize> PartialEq<Stack<U,M>> for Stack<T,N> {
+    fn eq(&self, other: &Stack<U,M>) -> bool { self.as_slice().eq(other.as_slice()) }
+    fn ne(&self, other: &Stack<U,M>) -> bool { self.as_slice().ne(other.as_slice()) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize, const M:usize> PartialEq<[U;M]> for StackVec<T,N> {
+impl<T:PartialEq<U>, U, const N:usize, const M:usize> PartialEq<[U;M]> for Stack<T,N> {
     fn eq(&self, other: &[U;M]) -> bool { self.as_slice().eq(other) }
     fn ne(&self, other: &[U;M]) -> bool { self.as_slice().ne(other) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize, const M:usize> PartialEq<StackVec<U,M>> for [T;N] {
-    fn eq(&self, other: &StackVec<U,M>) -> bool { self.eq(other.as_slice()) }
-    fn ne(&self, other: &StackVec<U,M>) -> bool { self.ne(other.as_slice()) }
+impl<T:PartialEq<U>, U, const N:usize, const M:usize> PartialEq<Stack<U,M>> for [T;N] {
+    fn eq(&self, other: &Stack<U,M>) -> bool { self.eq(other.as_slice()) }
+    fn ne(&self, other: &Stack<U,M>) -> bool { self.ne(other.as_slice()) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize> PartialEq<[U]> for StackVec<T,N> {
+impl<T:PartialEq<U>, U, const N:usize> PartialEq<[U]> for Stack<T,N> {
     fn eq(&self, other: &[U]) -> bool { self.as_slice().eq(other) }
     fn ne(&self, other: &[U]) -> bool { self.as_slice().ne(other) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize> PartialEq<&[U]> for StackVec<T,N> {
+impl<T:PartialEq<U>, U, const N:usize> PartialEq<&[U]> for Stack<T,N> {
     fn eq(&self, other: &&[U]) -> bool { self.as_slice().eq(*other) }
     fn ne(&self, other: &&[U]) -> bool { self.as_slice().ne(*other) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize> PartialEq<&mut [U]> for StackVec<T,N> {
+impl<T:PartialEq<U>, U, const N:usize> PartialEq<&mut [U]> for Stack<T,N> {
     fn eq(&self, other: &&mut [U]) -> bool { self.as_slice().eq(*other) }
     fn ne(&self, other: &&mut [U]) -> bool { self.as_slice().ne(*other) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize> PartialEq<StackVec<U,N>> for [T] {
-    fn eq(&self, other: &StackVec<U,N>) -> bool { self.eq(other.as_slice()) }
-    fn ne(&self, other: &StackVec<U,N>) -> bool { self.ne(other.as_slice()) }
+impl<T:PartialEq<U>, U, const N:usize> PartialEq<Stack<U,N>> for [T] {
+    fn eq(&self, other: &Stack<U,N>) -> bool { self.eq(other.as_slice()) }
+    fn ne(&self, other: &Stack<U,N>) -> bool { self.ne(other.as_slice()) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize> PartialEq<StackVec<U,N>> for &[T] {
-    fn eq(&self, other: &StackVec<U,N>) -> bool { (**self).eq(other) }
-    fn ne(&self, other: &StackVec<U,N>) -> bool { (**self).ne(other) }
+impl<T:PartialEq<U>, U, const N:usize> PartialEq<Stack<U,N>> for &[T] {
+    fn eq(&self, other: &Stack<U,N>) -> bool { (**self).eq(other) }
+    fn ne(&self, other: &Stack<U,N>) -> bool { (**self).ne(other) }
 }
 
-impl<T:PartialEq<U>, U, const N:usize> PartialEq<StackVec<U,N>> for &mut[T] {
-    fn eq(&self, other: &StackVec<U,N>) -> bool { (**self).eq(other) }
-    fn ne(&self, other: &StackVec<U,N>) -> bool { (**self).ne(other) }
+impl<T:PartialEq<U>, U, const N:usize> PartialEq<Stack<U,N>> for &mut[T] {
+    fn eq(&self, other: &Stack<U,N>) -> bool { (**self).eq(other) }
+    fn ne(&self, other: &Stack<U,N>) -> bool { (**self).ne(other) }
 }
 
-impl<T:Hash, const N:usize> Hash for StackVec<T,N> {
+impl<T:Hash, const N:usize> Hash for Stack<T,N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_slice().hash(state);
     }
 }
 
-impl<T, const N:usize> StackVec<T, N> {
+impl<T, const N:usize> Stack<T, N> {
 
     pub fn new() -> Self {
         Self { len: 0, data: unsafe { MaybeUninit::uninit().assume_init() } }
@@ -188,8 +189,8 @@ impl<T, const N:usize> StackVec<T, N> {
         unsafe { Some(self.data[self.len-1].assume_init_read()) }
     }
 
-    pub fn resize_capacity<const M: usize>(mut self) -> StackVec<T,M> {
-        let mut new = StackVec::new();
+    pub fn resize_capacity<const M: usize>(mut self) -> Stack<T,M> {
+        let mut new = Stack::new();
         while let Some(x) = self.pop() {
             if new.push(x).is_some() { break; } //stop early if M < N
         }
@@ -316,7 +317,7 @@ impl<T, const N:usize> StackVec<T, N> {
 
 }
 
-impl<T,const N:usize> IntoIterator for StackVec<T,N> {
+impl<T,const N:usize> IntoIterator for Stack<T,N> {
     type Item = T;
     type IntoIter = IntoIter<T,N>;
     fn into_iter(self) -> Self::IntoIter {
@@ -326,7 +327,7 @@ impl<T,const N:usize> IntoIterator for StackVec<T,N> {
 
 pub struct IntoIter<T, const N:usize> {
     index: usize,
-    stack: StackVec<T,N>
+    stack: Stack<T,N>
 }
 
 impl<T, const N:usize> IntoIter<T,N> {
