@@ -8,6 +8,7 @@ use core::slice::*;
 use core::borrow::*;
 use core::hash::*;
 use core::ptr::copy_nonoverlapping;
+use core::fmt::{Debug, Formatter, Result as FmtResult};
 
 pub struct Stack<T, const N:usize> {
     len: usize,
@@ -136,6 +137,12 @@ impl<T:PartialEq<U>, U, const N:usize> PartialEq<Stack<U,N>> for &mut[T] {
 impl<T:Hash, const N:usize> Hash for Stack<T,N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_slice().hash(state);
+    }
+}
+
+impl<T:Debug, const N:usize> Debug for Stack<T,N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        Debug::fmt(self.as_slice(), f)
     }
 }
 
