@@ -10,6 +10,33 @@ use core::hash::*;
 use core::ptr::copy_nonoverlapping;
 use core::fmt::{Debug, Formatter, Result as FmtResult};
 
+#[macro_export]
+macro_rules! stack {
+
+    ($elem:expr; $n:expr; $cap:expr) => {
+        {
+            let mut stack = Stack::with_capacity::<$cap>();
+            stack.resize($n, $elem);
+            stack
+        }
+    };
+
+    ($($x:expr),+ $(,)?; $cap:expr) => {
+        {
+            let vals = [$($x),*];
+            let mut stack = Stack::with_capacity::<$cap>();
+            let remaining = stack.extend_from_slice(&vals);
+            assert_eq!(
+                remaining.len(), 0,
+                "Attempted to create a stack of len {}, but the capacity was {}",
+                vals.len(), $cap
+            );
+            stack
+        }
+    }
+
+}
+
 pub struct Stack<T, const N:usize> {
     len: usize,
     data: [MaybeUninit<T>; N]

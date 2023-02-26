@@ -11,20 +11,27 @@ it was a fun weekend project.
 # Example
 
 ```rust
-use stack_stack::Stack;
+use stack_stack::{Stack, stack};
 
 //Manual creation
-let mut s = Stack::with_capacity::<5>();
-s.push(6);
-s.push(2);
-s.push(8);
-s.push(3);
-s.push(1);
-assert_eq!(s, [6,2,8,3,1]);
+let mut s1 = Stack::with_capacity::<5>();
+s1.push(6);
+s1.push(2);
+s1.push(8);
+s1.push(3);
+s1.push(1);
+assert_eq!(s1, [6,2,8,3,1]);
 
 //overflows are returned as options
-assert_eq!(s.push(101), Some(101));
+assert_eq!(s1.push(101), Some(101));
 
+//From macro invocations
+let s2 = stack![6,2,8,3,1; 10];
+assert_eq!(s2, [6,2,8,3,1]);
+assert_eq!(s2.capacity(), 10);
+
+let s3 = stack![3; 4; 4];
+assert_eq!(s3, [3,3,3,3]);
 
 ```
 
