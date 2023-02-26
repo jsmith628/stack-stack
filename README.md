@@ -1,10 +1,21 @@
 
 A simple crate for a stack-allocated stack. Useful for when you want a small
-`Vec` of items with a known upper bound.
+`Vec` of items with a known size bound and want to avoid dynamic allocation.
+
+# Design
+
+`Stack` implements a basic fixed-size, stack-allocated, FIFO data structure.
+
+Uses `const` generics in order to make the typing more ergonomic.
+
+To account for overflows, any method that increases stack size returns a `Result`
+containing any values over capacity inside the `Err` variant. There is **no**
+dynamic allocation whatsoever, even when going over-capacity.
+
+# Note
 
 Obviously this is similar to [`smallvec`](https://github.com/servo/rust-smallvec),
-the main distinguishing aspect being to have no heap allocation and to use
-modern `const` generics. Frankly, you should probably just use `smallvec`, the
+and frankly, you should probably just use `smallvec`. The
 devs did great work. I just wanted something a little closer to my design
 preferences, and it was a fun weekend project.
 
