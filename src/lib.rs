@@ -45,8 +45,7 @@ macro_rules! stack {
         {
             let vals = [$($x),*];
             let mut stack = Stack::with_capacity::<$cap>();
-            let remaining = stack.extend_from_slice(&vals);
-            if remaining.len() != 0 {
+            if stack.extend_from_slice(&vals).is_err() {
                 panic!(
                     "Attempted to create a stack of len {}, but the capacity was {}",
                     vals.len(), $cap
@@ -74,7 +73,7 @@ impl<T:Clone, const N:usize> Clone for Stack<T, N> {
     fn clone(&self) -> Self {
         let mut new = Stack::new();
         while new.len() < self.len() {
-            new.push(self[new.len()].clone());
+            new.push(self[new.len()].clone()).ok();
         }
         new
     }
@@ -361,22 +360,34 @@ impl<T, const N:usize> Stack<T, N> {
     /// # use stack_stack::Stack;
     /// let mut s = Stack::with_capacity::<3>();
     /// 
-    /// assert_eq!(s.push(6), None);
-    /// assert_eq!(s.push(2), None);
-    /// assert_eq!(s.push(8), None);
+    /// assert_eq!(s.push(6), Ok(()));
+    /// assert_eq!(s.push(2), Ok(()));
+    /// assert_eq!(s.push(8), Ok(()));
     /// assert_eq!(s, [6, 2, 8]);
     /// 
-    /// assert_eq!(s.push(3), Some(3));
-    /// assert_eq!(s.push(1), Some(1));
+    /// assert_eq!(s.push(3), Err(3));
+    /// assert_eq!(s.push(1), Err(1));
     /// assert_eq!(s, [6, 2, 8])
-    /// 
     /// ```
     /// 
-    pub fn push(&mut self, x:T) -> Option<T> {
-        if self.is_full() { return Some(x); }
+    /// If confident that there will be no overflow, the `#[must_use]` warnings
+    /// can be ergonomically ignored by postfixing [`Result::ok()`]
+    /// 
+    /// ```
+    /// # use stack_stack::Stack;
+    /// let mut s = Stack::with_capacity::<3>();
+    /// s.push(6).ok();
+    /// s.push(2).ok();
+    /// s.push(8).ok();
+    /// assert_eq!(s, [6, 2, 8]);
+    /// ```
+    /// 
+    /// 
+    pub fn push(&mut self, x:T) -> Result<(),T> {
+        if self.is_full() { return Err(x); }
         self.data[self.len] = MaybeUninit::new(x);
         self.len += 1;
-        None
+        Ok(())
     }
 
     ///
@@ -436,7 +447,7 @@ impl<T, const N:usize> Stack<T, N> {
     pub fn resize_capacity<const M: usize>(self) -> Stack<T,M> {
         let mut new = Stack::new();
         for x in self {
-            if new.push(x).is_some() { break; } //stop early if M < N
+            if new.push(x).is_err() { break; } //stop early if M < N
         }
         new
     }
@@ -664,7 +675,7 @@ impl<T, const N:usize> Stack<T, N> {
             self.truncate(new_len);
         } else {
             while self.len() < new_len {
-                self.push(f());
+                self.push(f()).ok();
             }
         }
     }
@@ -680,22 +691,24 @@ impl<T, const N:usize> Stack<T, N> {
     /// ```
     /// # use stack_stack::{Stack, stack};
     /// let mut s1 = stack![6, 2, 8; 5];
-    /// s1.extend_from_slice(&[3,1]);
+    /// assert_eq!(s1.extend_from_slice(&[3,1]), Ok(()));
     /// assert_eq!(s1, [6,2,8,3,1]);
     /// 
     /// 
     /// let mut s2 = stack![6, 2, 8; 5];
-    /// assert_eq!(s2.extend_from_slice(&[3,1,8,5]), &[8,5]);
+    /// assert_eq!(s2.extend_from_slice(&[3,1,8,5]), Err(&[8,5] as &[_]));
     /// assert_eq!(s2, [6,2,8,3,1]);
     /// 
     /// ```
     /// 
-    pub fn extend_from_slice<'a>(&mut self, mut other:&'a[T]) -> &'a[T] where T:Clone {
-        while other.len() > 0 && !self.is_full() {
-            self.push(other[0].clone());
-            other = &other[1..];
+    pub fn extend_from_slice<'a>(&mut self, mut other:&'a[T]) -> Result<(),&'a[T]>
+    where T:Clone
+    {
+        while let Some((first, rest)) = other.split_first() {
+            self.push(first.clone()).map_err(|_| other)?;
+            other = rest;
         }
-        other
+        Ok(())
     }
 
 
@@ -710,25 +723,26 @@ impl<T, const N:usize> Stack<T, N> {
     /// ```
     /// # use stack_stack::{Stack, stack};
     /// let mut s1 = stack![9,9,9,9; 10];
-    /// s1.extend_from_iter(0..3);
+    /// assert_eq!(s1.extend_from_iter(0..3), Ok(()));
     /// assert_eq!(s1, [9,9,9,9,0,1,2]);
     /// 
     /// 
     /// let mut s1 = stack![9,9,9,9; 7];
-    /// assert_eq!(s1.extend_from_iter(0..10), 3..10); //only 3 elements are appended
+    /// assert_eq!(s1.extend_from_iter(0..10), Err(3..10)); //only 3 elements are appended
     /// assert_eq!(s1, [9,9,9,9,0,1,2]);
     /// 
     /// ```
     /// 
-    pub fn extend_from_iter<I:Iterator<Item=T>>(&mut self, mut iter:I) -> I {
-        while !self.is_full() {
-            if let Some(x) = iter.next() {
-                self.push(x);
+    pub fn extend_from_iter<I:Iterator<Item=T>>(&mut self, mut iter:I) -> Result<(), I> {
+        loop {
+            if self.is_full() {
+                return Err(iter);
+            } else if let Some(x) = iter.next() {
+                self.push(x).ok();
             } else {
-                break;
+                return Ok(());
             }
         }
-        iter
     }
 
 }
