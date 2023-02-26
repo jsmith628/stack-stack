@@ -61,13 +61,13 @@ impl<T, const N:usize> Drop for Stack<T, N> {
 impl<T, const N:usize> Deref for Stack<T,N> {
     type Target = [T];
     fn deref(&self) -> &[T] {
-        unsafe { from_raw_parts(self.data.as_ptr() as *const _, self.len) }
+        self.as_slice()
     }
 }
 
 impl<T, const N:usize> DerefMut for Stack<T,N> {
     fn deref_mut(&mut self) -> &mut [T] {
-        unsafe { from_raw_parts_mut(self.data.as_mut_ptr() as *mut _, self.len) }
+        self.as_mut_slice()
     }
 }
 
@@ -93,12 +93,6 @@ impl<T, const N:usize> Borrow<[T]> for Stack<T,N> {
 
 impl<T, const N:usize> BorrowMut<[T]> for Stack<T,N> {
     fn borrow_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
-}
-
-impl<T> Stack<T, 0> {
-    pub fn with_capacity<const N:usize>() -> Stack<T,N> {
-        Stack::new()
-    }
 }
 
 impl<T, I:SliceIndex<[T]>, const N:usize> Index<I> for Stack<T,N> {
@@ -173,9 +167,15 @@ impl<T:Debug, const N:usize> Debug for Stack<T,N> {
     }
 }
 
+impl<T> Stack<T, 0> {
+    pub const fn with_capacity<const N:usize>() -> Stack<T,N> {
+        Stack::new()
+    }
+}
+
 impl<T, const N:usize> Stack<T, N> {
 
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { len: 0, data: unsafe { MaybeUninit::uninit().assume_init() } }
     }
 
@@ -184,7 +184,9 @@ impl<T, const N:usize> Stack<T, N> {
     }
 
     pub fn using_array(array: [T;N], len: usize) -> Self {
-        if len > N { panic!("tried to create stack larger than capacity"); }
+        if len > N {
+            panic!("Attempted to create stack with len {len}, but the capacity was {N}");
+        }
         unsafe { Self::using_array_unchecked(array, len) }
     }
 
@@ -194,21 +196,25 @@ impl<T, const N:usize> Stack<T, N> {
         array
     }
 
-    pub unsafe fn from_raw_parts(buf: [MaybeUninit<T>; N], len: usize) -> Self {
+    pub const unsafe fn from_raw_parts(buf: [MaybeUninit<T>; N], len: usize) -> Self {
         Self { len, data: buf }
     }
 
-    pub fn len(&self) -> usize { self.len }
-    pub fn capacity(&self) -> usize { N }
+    pub const fn len(&self) -> usize { self.len }
+    pub const fn capacity(&self) -> usize { N }
     
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
-    pub fn is_full(&self) -> bool { self.len() >= self.capacity() }
+    pub const fn is_empty(&self) -> bool { self.len() == 0 }
+    pub const fn is_full(&self) -> bool { self.len() >= self.capacity() }
 
-    pub fn as_ptr(&self) -> *const T { self.data.as_ptr() as *const _ }
+    pub const fn as_ptr(&self) -> *const T { self.data.as_ptr() as *const _ }
     pub fn as_mut_ptr(&mut self) -> *mut T { self.data.as_mut_ptr() as *mut _ }
 
-    pub fn as_slice(&self) -> &[T] { self }
-    pub fn as_mut_slice(&mut self) -> &mut [T] { self }
+    pub const fn as_slice(&self) -> &[T] {
+        unsafe { from_raw_parts(self.data.as_ptr() as *const _, self.len) }
+    }
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        unsafe { from_raw_parts_mut(self.data.as_mut_ptr() as *mut _, self.len) }
+    }
 
     pub fn push(&mut self, x:T) -> Option<T> {
         if self.is_full() { return Some(x); }
