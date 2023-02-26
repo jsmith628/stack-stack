@@ -4,9 +4,9 @@ A simple crate for a stack-allocated stack. Useful for when you want a small
 
 Obviously this is similar to [`smallvec`](https://github.com/servo/rust-smallvec),
 the main distinguishing aspect being to have no heap allocation and to use
-modern `const` generics. Frankly, you should just use `smallvec`, it's great
-work. I just wanted something a little closer to my design preferences, and
-it was a fun weekend project.
+modern `const` generics. Frankly, you should probably just use `smallvec`, the
+devs did great work. I just wanted something a little closer to my design
+preferences, and it was a fun weekend project.
 
 # Example
 
