@@ -1,8 +1,15 @@
 [package]
 name = "stack-stack"
+authors = ["Joshua Smith <jsmith62831@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A simple crate for a stack-allocated stack"
+repository = "https://github.com/jsmith628/stack-stack"
+documentation = "https://docs.rs/stack-stack"
+license = "Apache-2.0"
+license-file = "LICENSE"
+readme = "README.md"
+keywords = ["stack", "vec", "array", "const", "static"]
+categories = ["data-structures", "embedded", "no-std"]
 
 [dependencies]

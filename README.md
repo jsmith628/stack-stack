@@ -1,6 +1,6 @@
 
 A simple crate for a stack-allocated stack. Useful for when you want a small
-list of items with a known upper bound.
+`Vec` of items with a known upper bound.
 
 Obviously this is similar to [`smallvec`](https://github.com/servo/rust-smallvec),
 the main distinguishing aspect being to have no heap allocation and to use
