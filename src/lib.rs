@@ -1,5 +1,6 @@
 #![no_std]
 
+use core::iter::*;
 use core::mem::*;
 use core::ops::*;
 use core::slice::*;
@@ -314,3 +315,52 @@ impl<T, const N:usize> StackVec<T, N> {
     }
 
 }
+
+impl<T,const N:usize> IntoIterator for StackVec<T,N> {
+    type Item = T;
+    type IntoIter = IntoIter<T,N>;
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter { index: 0, stack: self }
+    }
+}
+
+pub struct IntoIter<T, const N:usize> {
+    index: usize,
+    stack: StackVec<T,N>
+}
+
+impl<T, const N:usize> IntoIter<T,N> {
+    fn remaining(&self) -> usize {
+        self.stack.len()-self.index
+    }
+}
+
+impl<T, const N:usize> Iterator for IntoIter<T,N> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.stack.len() { return None; }
+        unsafe {
+            let i = self.index;
+            self.index += 1;
+            Some(self.stack.data[i].assume_init_read())
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.remaining();
+        (remaining, Some(remaining))
+    }
+
+    fn count(self) -> usize { self.remaining() }
+
+}
+
+impl<T, const N:usize> DoubleEndedIterator for IntoIter<T,N> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.stack.pop()
+    }
+}
+
+impl<T, const N:usize> ExactSizeIterator for IntoIter<T,N> {}
+// unsafe impl<T, const N:usize> TrustedLen for IntoIter<T,N> {}
+
